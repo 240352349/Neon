@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Shopping Cart - Neon</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="cart.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body class="dark-mode lang-zh">
+    <header>
+        <div class="container">
+            <div class="logo">Neon</div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">
+                        <img src="Logo/image.png" alt="Home" class="default-img" style="height: 90px; width: auto;">
+                        <img src="Logo/logo.png" alt="Home" class="hover-img" style="height: 90px; width: auto;">
+                    </a></li>
+                </ul>
+            </nav>
+            <div class="header-right">
+                <div class="header-icons">
+                    <a href="cart.html" class="cart-icon">🛒<span class="cart-count">0</span></a>
+                </div>
+                <div class="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                    <i class="fas fa-sun"></i>
+                </div>
+                <div class="language-toggle">
+                    <button class="language-toggle-btn" title="切換語言 / Switch Language">🌎</button>
+                    <div class="language-dropdown">
+                        <button class="language-option active" data-lang="zh">中文</button>
+                        <button class="language-option" data-lang="en">ENG</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="cart-section">
+        <div class="container">
+            <h2 class="lang-zh">購物車</h2>
+            <h2 class="lang-en">Your Shopping Cart</h2>
+            <div class="cart-wrapper">
+                <div class="cart-items" id="cartItems">
+
+                </div>
+                <div class="cart-summary">
+                    <h3 class="lang-zh">訂單摘要</h3>
+                    <h3 class="lang-en">Order Summary</h3>
+                    <div class="summary-row"><span class="lang-zh">小計</span><span class="lang-en">Subtotal</span><span id="subtotal">$0.00</span></div>
+                    <div class="summary-row"><span class="lang-zh">運費 (5%)</span><span class="lang-en">Delivery (5%)</span><span id="delivery">$0.00</span></div>
+                    <div class="summary-row total"><span class="lang-zh">總計</span><span class="lang-en">Total</span><span id="total">$0.00</span></div>
+                    <button class="checkout-btn" id="checkoutBtn"><span class="lang-zh">前往結帳</span><span class="lang-en">Proceed to Checkout</span></button>
+                </div>
+            </div>
+            <p class="empty-cart" id="emptyMsg" style="display:none; text-align:center; margin-top:40px;" class="lang-zh">
+                您的購物車是空的。<a href="index.html">繼續購物</a>
+            </p>
+            <p class="empty-cart" id="emptyMsgEn" style="display:none; text-align:center; margin-top:40px;" class="lang-en">
+                Your cart is empty. <a href="index.html">Continue Shopping</a>
+            </p>
+        </div>
+    </section>
+
+    <script src="common.js"></script>
+    <script src="cart-script.js"></script>
+</body>
+</html>
