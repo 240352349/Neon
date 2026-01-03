@@ -61,7 +61,97 @@
 /* Address field transition */
 #addressField {
     transition: all 0.3s ease;
-    overflow: hidden;
+    overflow: visible;
+}
+
+/* Address autocomplete styles */
+.address-autocomplete-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+#addressSearch {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: #222;
+    color: #fff;
+    transition: all 0.3s ease;
+}
+
+#addressSearch:focus {
+    border-color: #ffd700;
+    outline: none;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.address-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #1a1a1a;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    margin-top: 4px;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.address-dropdown-item {
+    padding: 12px 16px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.address-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.address-dropdown-item:hover,
+.address-dropdown-item.selected {
+    background-color: rgba(255, 215, 0, 0.2);
+    color: #ffd700;
+}
+
+.address-dropdown-item:active {
+    background-color: rgba(255, 215, 0, 0.3);
+}
+
+.address-loading {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    color: #ffd700;
+    font-size: 14px;
+    pointer-events: none;
+}
+
+/* Scrollbar styling for dropdown */
+.address-dropdown::-webkit-scrollbar {
+    width: 8px;
+}
+
+.address-dropdown::-webkit-scrollbar-track {
+    background: #222;
+    border-radius: 4px;
+}
+
+.address-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.5);
+    border-radius: 4px;
+}
+
+.address-dropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 215, 0, 0.7);
 }
 
 /* Submit button styles */

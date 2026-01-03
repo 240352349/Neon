@@ -10,28 +10,281 @@ if (typeof emailjs !== 'undefined') {
     emailjs.init(EMAILJS_CONFIG.publicKey);
 }
 
+// Smart Locker Address Autocomplete
+class SmartLockerAutocomplete {
+    constructor() {
+        this.sheetId = '1hXeaURQ8WbLqtgSrpIexfywAC-w7P2RTgNkqsER2VQA';
+        this.addresses = [];
+        this.filteredAddresses = [];
+        this.selectedIndex = -1;
+        this.isLoading = false;
+        
+        this.searchInput = document.getElementById('addressSearch');
+        this.dropdown = document.getElementById('addressDropdown');
+        this.loadingEl = document.getElementById('addressLoading');
+        
+        this.init();
+    }
+    
+    async init() {
+        if (!this.searchInput) return;
+        
+        // Load addresses when shipping is selected
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        // Search input events
+        this.searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
+        this.searchInput.addEventListener('focus', () => {
+            if (this.searchInput.value) {
+                this.handleSearch(this.searchInput.value);
+            }
+        });
+        this.searchInput.addEventListener('keydown', (e) => this.handleKeyDown(e));
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.address-autocomplete-wrapper')) {
+                this.hideDropdown();
+            }
+        });
+    }
+    
+    async loadAddresses() {
+        if (this.isLoading || this.addresses.length > 0) return;
+        
+        this.isLoading = true;
+        this.showLoading();
+        
+        try {
+            // Try to get from cache first
+            const cached = localStorage.getItem('smartLockerAddresses');
+            const cacheTime = localStorage.getItem('smartLockerAddressesTime');
+            const now = Date.now();
+            
+            // Use cache if less than 24 hours old
+            if (cached && cacheTime && (now - parseInt(cacheTime)) < 86400000) {
+                this.addresses = JSON.parse(cached);
+                this.hideLoading();
+                this.isLoading = false;
+                return;
+            }
+            
+            // Fetch from Google Sheets
+            const url = `https://docs.google.com/spreadsheets/d/${this.sheetId}/gviz/tq?tqx=out:json`;
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const text = await response.text();
+            
+            // Parse Google Sheets JSON response
+            // Google Sheets returns: google.visualization.Query.setResponse({...json...});
+            // Remove the wrapper function call
+            const jsonStart = text.indexOf('{');
+            const jsonEnd = text.lastIndexOf('}') + 1;
+            if (jsonStart === -1 || jsonEnd === 0) {
+                throw new Error('無法解析 Google Sheets 數據格式');
+            }
+            
+            const jsonText = text.substring(jsonStart, jsonEnd);
+            const json = JSON.parse(jsonText);
+            const rows = json.table.rows;
+            
+            this.addresses = [];
+            rows.forEach((row, index) => {
+                if (index === 0) return; // Skip header row
+                const cells = row.c;
+                if (cells && cells.length > 0) {
+                    // Try to get address from first column, or combine all columns
+                    let address = '';
+                    cells.forEach((cell, cellIndex) => {
+                        if (cell && cell.v) {
+                            const value = String(cell.v).trim();
+                            if (value) {
+                                if (cellIndex === 0) {
+                                    address = value;
+                                } else {
+                                    address += ' ' + value;
+                                }
+                            }
+                        }
+                    });
+                    if (address) {
+                        this.addresses.push(address.trim());
+                    }
+                }
+            });
+            
+            // Cache the addresses
+            localStorage.setItem('smartLockerAddresses', JSON.stringify(this.addresses));
+            localStorage.setItem('smartLockerAddressesTime', now.toString());
+            
+        } catch (error) {
+            console.error('載入智能櫃地址失敗:', error);
+            // Fallback: try to use cached data even if old
+            const cached = localStorage.getItem('smartLockerAddresses');
+            if (cached) {
+                try {
+                    this.addresses = JSON.parse(cached);
+                    console.log('使用緩存的智能櫃地址數據');
+                } catch (parseError) {
+                    console.error('解析緩存數據失敗:', parseError);
+                    this.addresses = [];
+                }
+            } else {
+                this.addresses = [];
+                // Show error message to user
+                if (this.searchInput) {
+                    this.searchInput.placeholder = '無法載入智能櫃地址，請手動輸入';
+                }
+            }
+        }
+        
+        this.hideLoading();
+        this.isLoading = false;
+    }
+    
+    handleSearch(query) {
+        if (!query || query.length < 1) {
+            this.hideDropdown();
+            return;
+        }
+        
+        const searchTerm = query.toLowerCase().trim();
+        this.filteredAddresses = this.addresses.filter(addr => 
+            addr.toLowerCase().includes(searchTerm)
+        ).slice(0, 10); // Limit to 10 results
+        
+        if (this.filteredAddresses.length > 0) {
+            this.showDropdown();
+        } else {
+            this.hideDropdown();
+        }
+    }
+    
+    showDropdown() {
+        if (!this.dropdown) return;
+        
+        this.dropdown.innerHTML = '';
+        this.filteredAddresses.forEach((addr, index) => {
+            const item = document.createElement('div');
+            item.className = 'address-dropdown-item';
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+            }
+            item.textContent = addr;
+            item.addEventListener('click', () => this.selectAddress(addr));
+            item.addEventListener('mouseenter', () => {
+                this.selectedIndex = index;
+                this.updateDropdownSelection();
+            });
+            this.dropdown.appendChild(item);
+        });
+        
+        this.dropdown.style.display = 'block';
+    }
+    
+    hideDropdown() {
+        if (this.dropdown) {
+            this.dropdown.style.display = 'none';
+        }
+        this.selectedIndex = -1;
+    }
+    
+    updateDropdownSelection() {
+        const items = this.dropdown.querySelectorAll('.address-dropdown-item');
+        items.forEach((item, index) => {
+            if (index === this.selectedIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+    
+    selectAddress(address) {
+        this.searchInput.value = address;
+        this.hideDropdown();
+        this.searchInput.focus();
+    }
+    
+    handleKeyDown(e) {
+        if (!this.dropdown || this.dropdown.style.display === 'none') return;
+        
+        switch(e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                this.selectedIndex = Math.min(this.selectedIndex + 1, this.filteredAddresses.length - 1);
+                this.updateDropdownSelection();
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                this.selectedIndex = Math.max(this.selectedIndex - 1, -1);
+                this.updateDropdownSelection();
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (this.selectedIndex >= 0 && this.filteredAddresses[this.selectedIndex]) {
+                    this.selectAddress(this.filteredAddresses[this.selectedIndex]);
+                }
+                break;
+            case 'Escape':
+                this.hideDropdown();
+                break;
+        }
+    }
+    
+    showLoading() {
+        if (this.loadingEl) {
+            this.loadingEl.style.display = 'block';
+        }
+    }
+    
+    hideLoading() {
+        if (this.loadingEl) {
+            this.loadingEl.style.display = 'none';
+        }
+    }
+    
+    async ensureAddressesLoaded() {
+        if (this.addresses.length === 0 && !this.isLoading) {
+            await this.loadAddresses();
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('checkoutForm');
     const totalEl = document.getElementById('finalTotal');
     const savedTotal = localStorage.getItem('checkoutTotal') || '0.00';
     totalEl.textContent = `$${savedTotal}`;
 
+    // Initialize smart locker autocomplete
+    const autocomplete = new SmartLockerAutocomplete();
+
     // Handle delivery method change
     const deliveryMethodInputs = form.querySelectorAll('input[name="deliveryMethod"]');
     const addressField = document.getElementById('addressField');
-    const addressInput = form.querySelector('input[name="address"]');
+    const addressInput = document.getElementById('addressSearch');
 
     deliveryMethodInputs.forEach(input => {
-        input.addEventListener('change', (e) => {
+        input.addEventListener('change', async (e) => {
             if (e.target.value === 'shipping') {
                 // Show address field for shipping
                 addressField.style.display = 'block';
                 addressInput.required = true;
+                // Load addresses when shipping is selected
+                await autocomplete.ensureAddressesLoaded();
             } else {
                 // Hide address field for pickup
                 addressField.style.display = 'none';
                 addressInput.required = false;
                 addressInput.value = ''; // Clear address when switching to pickup
+                autocomplete.hideDropdown();
             }
         });
     });
@@ -55,7 +308,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = form.name.value.trim().slice(0, 100); // Limit length
         const email = form.email.value.trim().slice(0, 100);
         const phone = form.phone.value.trim().slice(0, 20);
-        const address = deliveryMethod === 'shipping' ? form.address.value.trim().slice(0, 200) : '';
+        const addressInput = document.getElementById('addressSearch');
+        const address = deliveryMethod === 'shipping' ? (addressInput ? addressInput.value.trim().slice(0, 200) : '') : '';
 
         // Validate required fields
         if (!name || !email || !phone) {

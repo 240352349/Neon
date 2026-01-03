@@ -72,7 +72,31 @@
                 </div>
                 
                 <div id="addressField" style="display: none; margin: 20px 0;">
-                    <label><span class="lang-zh">地址</span><span class="lang-en">Address</span> <input type="text" name="address" data-placeholder-zh="請輸入地址" data-placeholder-en="Enter your address" /></label>
+                    <label>
+                        <span class="lang-zh">智能櫃地址</span>
+                        <span class="lang-en">Smart Locker Address</span>
+                        <div class="address-autocomplete-wrapper">
+                            <input 
+                                type="text" 
+                                id="addressSearch" 
+                                name="address" 
+                                autocomplete="off"
+                                placeholder=""
+                                data-placeholder-zh="請搜尋或選擇智能櫃地址（輸入關鍵字搜尋）" 
+                                data-placeholder-en="Search or select smart locker address (type to search)" 
+                                required
+                            />
+                            <div id="addressDropdown" class="address-dropdown" style="display: none;"></div>
+                            <div id="addressLoading" class="address-loading" style="display: none;">
+                                <span class="lang-zh">載入中...</span>
+                                <span class="lang-en">Loading...</span>
+                            </div>
+                        </div>
+                        <p style="color: #aaa; font-size: 14px; margin-top: 5px; margin-bottom: 10px;">
+                            <span class="lang-zh">💡 提示：輸入關鍵字（如地區、街道名稱）即可搜尋相關智能櫃地址</span>
+                            <span class="lang-en">💡 Tip: Type keywords (e.g., area, street name) to search for smart locker addresses</span>
+                        </p>
+                    </label>
                 </div>
 
                 <div style="margin-top:30px; text-align:center; font-size:24px; color:#ffd700; margin-bottom:20px;">
