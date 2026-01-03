@@ -159,8 +159,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSummary() {
         const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-        const delivery = subtotal * 0.05;
-        const total = subtotal + delivery;
+        const delivery = 0; // 包運費，運費為 0
+        const total = subtotal; // 總額等於小計（包運費）
         subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
         deliveryEl.textContent = `$${delivery.toFixed(2)}`;
         totalEl.textContent = `$${total.toFixed(2)}`;
