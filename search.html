@@ -10,7 +10,9 @@
 <body class="dark-mode lang-zh">
     <header>
         <div class="container">
-            <div class="logo">Neon</div>
+            <div class="logo">
+                <img src="Logo/image.png" alt="Neon" style="height: 90px; width: auto;">
+            </div>
             <nav>
                 <ul>
                     <li><a href="index.html#on-sale"><span class="lang-zh">特價商品</span><span class="lang-en">On Sale</span></a></li>
@@ -128,29 +130,57 @@
                 searchTitle.textContent = `Search Results for "${query}"`;
             }
             
-            // Search products (use displayProducts if available, otherwise products)
-            if (query) {
-                const productsToSearch = typeof displayProducts !== 'undefined' ? displayProducts : products;
+            // Search products from Google Sheets
+            async function performSearch() {
+                // Load products if not already loaded
+                let productsToSearch = [];
+                if (typeof window.loadProductsFromGoogleSheets === 'function') {
+                    const result = await window.loadProductsFromGoogleSheets();
+                    productsToSearch = result.products || [];
+                } else if (typeof window.products !== 'undefined' && window.products.length > 0) {
+                    productsToSearch = window.products;
+                } else if (typeof products !== 'undefined' && products.length > 0) {
+                    productsToSearch = products;
+                }
+                
                 const searchResults = productsToSearch.filter(p => 
-                    p.name.toLowerCase().includes(query.toLowerCase())
+                    p && p.name && (
+                        p.name.toLowerCase().includes(query.toLowerCase()) ||
+                        (p.description && p.description.toLowerCase().includes(query.toLowerCase())) ||
+                        (p.category && p.category.toLowerCase().includes(query.toLowerCase()))
+                    )
                 );
                 
                 const resultsContainer = document.getElementById('searchResults');
                 const noResults = document.getElementById('noResults');
+                const noResultsEn = document.getElementById('noResultsEn');
                 
-                if (searchResults.length === 0) {
-                    resultsContainer.innerHTML = '';
-                    noResults.style.display = 'block';
+                // Always hide no results messages first
+                if (noResults) noResults.style.display = 'none';
+                if (noResultsEn) noResultsEn.style.display = 'none';
+                
+                // Check search results count: 0 = show message, >= 1 = hide message
+                if (!searchResults || searchResults.length === 0) {
+                    // No results: show message
+                    if (resultsContainer) resultsContainer.innerHTML = '';
+                    if (noResults) noResults.style.display = 'block';
+                    if (noResultsEn) noResultsEn.style.display = 'block';
                 } else {
-                    noResults.style.display = 'none';
-                    resultsContainer.innerHTML = '';
+                    // Has results (>= 1): hide message and show products
+                    if (resultsContainer) resultsContainer.innerHTML = '';
+                    
+                    // Ensure no results messages are hidden
+                    if (noResults) noResults.style.display = 'none';
+                    if (noResultsEn) noResultsEn.style.display = 'none';
                     
                     // Safely render products using DOM methods
+                    let renderedCount = 0;
                     searchResults.forEach(rawProduct => {
                         const p = validateProduct(rawProduct);
                         if (!p || !p.id) return;
+                        renderedCount++;
                         
-                        const images = p.images.length > 0 ? p.images : getProductImages(p.name) || [];
+                        const images = p.images.length > 0 ? p.images : [];
                         const firstImage = images[0] || '';
                         
                         const productDiv = document.createElement('div');
@@ -159,31 +189,56 @@
                         
                         const imageContainer = document.createElement('div');
                         imageContainer.className = 'product-image-container';
+                        imageContainer.style.cursor = 'pointer';
+                        imageContainer.addEventListener('click', () => {
+                            if (typeof window.openProductDetail === 'function') {
+                                // Pass full product data including description and details - use rawProduct if available
+                                const productToPass = rawProduct && rawProduct.description !== undefined ? rawProduct : p;
+                                window.openProductDetail(productToPass);
+                            }
+                        });
                         
                         const productImage = document.createElement('div');
                         productImage.className = 'product-image';
                         if (firstImage) {
-                            productImage.style.backgroundImage = `url('${firstImage.replace(/'/g, "\\'")}')`;
+                            // Use img tag instead of backgroundImage to avoid CORS/403 issues
+                            let imageUrl = firstImage.trim();
+                            // Only convert if it's imgur.com page URL (not i.imgur.com)
+                            if (imageUrl.startsWith('https://imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+                                const imgurId = imageUrl.replace('https://imgur.com/', '').split('/')[0].split('?')[0];
+                                imageUrl = `https://i.imgur.com/${imgurId}.png`;
+                            }
+                            const img = document.createElement('img');
+                            img.src = imageUrl;
+                            img.style.width = '100%';
+                            img.style.height = '100%';
+                            img.style.objectFit = 'cover';
+                            img.style.display = 'block';
+                            img.crossOrigin = 'anonymous'; // Avoid 403 errors
+                            img.referrerPolicy = 'no-referrer'; // Avoid 403 errors
+                            img.onerror = function() {
+                                // Fallback: try with backgroundImage if img fails
+                                this.style.display = 'none';
+                                productImage.style.backgroundImage = `url('${imageUrl.replace(/'/g, "\\'")}')`;
+                                productImage.style.backgroundSize = 'cover';
+                            };
+                            productImage.appendChild(img);
                         }
                         productImage.dataset.images = JSON.stringify(images);
                         imageContainer.appendChild(productImage);
-                        
-                        if (images.length > 1) {
-                            const indicators = document.createElement('div');
-                            indicators.className = 'image-indicators';
-                            images.forEach((_, idx) => {
-                                const dot = document.createElement('span');
-                                dot.className = `image-dot ${idx === 0 ? 'active' : ''}`;
-                                dot.dataset.index = String(idx);
-                                indicators.appendChild(dot);
-                            });
-                            imageContainer.appendChild(indicators);
-                        }
                         
                         productDiv.appendChild(imageContainer);
                         
                         const h4 = document.createElement('h4');
                         h4.textContent = p.name;
+                        h4.style.cursor = 'pointer';
+                        h4.addEventListener('click', () => {
+                            if (typeof window.openProductDetail === 'function') {
+                                // Pass full product data including description and details - use rawProduct if available
+                                const productToPass = rawProduct && rawProduct.description !== undefined ? rawProduct : p;
+                                window.openProductDetail(productToPass);
+                            }
+                        });
                         productDiv.appendChild(h4);
                         
                         const priceP = document.createElement('p');
@@ -202,38 +257,28 @@
                         resultsContainer.appendChild(productDiv);
                     });
                     
-                    // Add image rotation on hover
-                    resultsContainer.querySelectorAll('.product-image').forEach(imgEl => {
-                        const images = JSON.parse(imgEl.dataset.images || '[]');
-                        if (images.length > 1) {
-                            let currentIndex = 0;
-                            let rotationInterval;
-                            
-                            imgEl.closest('.product').addEventListener('mouseenter', () => {
-                                rotationInterval = setInterval(() => {
-                                    currentIndex = (currentIndex + 1) % images.length;
-                                    imgEl.style.backgroundImage = `url('${images[currentIndex]}')`;
-                                    // Update indicators
-                                    const dots = imgEl.closest('.product').querySelectorAll('.image-dot');
-                                    dots.forEach((dot, idx) => {
-                                        dot.classList.toggle('active', idx === currentIndex);
-                                    });
-                                }, 2000); // Change image every 2 seconds
-                            });
-                            
-                            imgEl.closest('.product').addEventListener('mouseleave', () => {
-                                if (rotationInterval) {
-                                    clearInterval(rotationInterval);
-                                }
-                                currentIndex = 0;
-                                imgEl.style.backgroundImage = `url('${images[0]}')`;
-                                const dots = imgEl.closest('.product').querySelectorAll('.image-dot');
-                                dots.forEach((dot, idx) => {
-                                    dot.classList.toggle('active', idx === 0);
-                                });
-                            });
+                    // After rendering all products, ensure no results messages are hidden
+                    if (renderedCount > 0) {
+                        // Force hide with visibility
+                        if (noResults) {
+                            noResults.style.display = 'none';
+                            noResults.style.visibility = 'hidden';
                         }
-                    });
+                        if (noResultsEn) {
+                            noResultsEn.style.display = 'none';
+                            noResultsEn.style.visibility = 'hidden';
+                        }
+                    } else {
+                        // No products rendered, show message
+                        if (noResults) {
+                            noResults.style.display = 'block';
+                            noResults.style.visibility = 'visible';
+                        }
+                        if (noResultsEn) {
+                            noResultsEn.style.display = 'block';
+                            noResultsEn.style.visibility = 'visible';
+                        }
+                    }
                     
                     // Add event listeners to add-to-cart buttons
                     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
@@ -261,10 +306,19 @@
                         });
                     });
                 }
+            }
+            
+            // Execute search if query exists
+            if (query && query.trim()) {
+                performSearch();
             } else {
-                document.getElementById('searchResults').innerHTML = '';
-                document.getElementById('noResults').style.display = 'block';
-                document.getElementById('noResults').textContent = 'Please enter a search query.';
+                // No query: clear results and show message
+                const resultsContainer = document.getElementById('searchResults');
+                const noResults = document.getElementById('noResults');
+                const noResultsEn = document.getElementById('noResultsEn');
+                if (resultsContainer) resultsContainer.innerHTML = '';
+                if (noResults) noResults.style.display = 'block';
+                if (noResultsEn) noResultsEn.style.display = 'block';
             }
             
             // Update cart count

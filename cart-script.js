@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]');
     const cartItemsDiv = document.getElementById('cartItems');
     const emptyMsg = document.getElementById('emptyMsg');
@@ -9,6 +9,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const cartCountEls = document.querySelectorAll('.cart-count');
 
     // escapeHtml function is now in common.js as window.escapeHtml
+    
+    // Load products from Google Sheets to get full product data (description, details, etc.)
+    let products = [];
+    if (typeof loadProductsFromGoogleSheets === 'function') {
+        try {
+            await loadProductsFromGoogleSheets();
+            // Get products from global scope
+            if (typeof window.products !== 'undefined' && window.products.length > 0) {
+                products = window.products;
+            } else {
+                // Try to get from localStorage cache
+                const cached = localStorage.getItem('productsData');
+                if (cached) {
+                    try {
+                        const cachedData = JSON.parse(cached);
+                        products = cachedData.products || [];
+                    } catch (e) {
+                        // Cache is corrupted, continue without products
+                    }
+                }
+            }
+        } catch (error) {
+            // If loading fails, try to get from localStorage cache
+            const cached = localStorage.getItem('productsData');
+            if (cached) {
+                try {
+                    const cachedData = JSON.parse(cached);
+                    products = cachedData.products || [];
+                } catch (e) {
+                    // Cache is corrupted, continue without products
+                }
+            }
+        }
+    }
 
     // Validate and sanitize cart item data
     function validateCartItem(item, index) {
@@ -56,14 +90,51 @@ document.addEventListener('DOMContentLoaded', () => {
             cartItem.dataset.id = item.id;
             cartItem.dataset.index = String(index);
             
-            // Image container
+            // Image container (clickable)
             const imageDiv = document.createElement('div');
             imageDiv.className = 'cart-item-image';
+            imageDiv.style.cursor = 'pointer';
             if (item.images[0]) {
-                // Use CSS custom property to safely set background image
-                const safeUrl = window.escapeHtml ? window.escapeHtml(item.images[0]) : item.images[0];
-                imageDiv.style.backgroundImage = `url('${safeUrl.replace(/'/g, "\\'")}')`;
+                // Use image URL directly - already in correct format (https://i.imgur.com/ID.png)
+                let imageUrl = item.images[0].trim();
+                // Only convert if it's imgur.com page URL (not i.imgur.com)
+                if (imageUrl.startsWith('https://imgur.com/') && !imageUrl.includes('i.imgur.com')) {
+                    const imgurId = imageUrl.replace('https://imgur.com/', '').split('/')[0].split('?')[0];
+                    imageUrl = `https://i.imgur.com/${imgurId}.png`;
+                } else if (!imageUrl.startsWith('http')) {
+                    // Local path - escape single quotes
+                    imageUrl = (window.escapeHtml ? window.escapeHtml(imageUrl) : imageUrl).replace(/'/g, "\\'");
+                }
+                // Escape single quotes in URL for CSS
+                const safeUrl = imageUrl.replace(/'/g, "\\'");
+                imageDiv.style.backgroundImage = `url('${safeUrl}')`;
+                imageDiv.style.backgroundSize = 'cover';
+                imageDiv.style.backgroundPosition = 'center';
             }
+            imageDiv.addEventListener('click', () => {
+                if (typeof window.openProductDetail === 'function') {
+                    // Try to get full product data from products array if available
+                    let productToPass = rawItem;
+                    if (typeof products !== 'undefined' && products.length > 0) {
+                        const fullProduct = products.find(p => p.id === item.id);
+                        if (fullProduct && fullProduct.description !== undefined) {
+                            productToPass = fullProduct;
+                        }
+                    }
+                    // If rawItem doesn't have description/details, use rawItem as is
+                    if (!productToPass.description && !productToPass.details) {
+                        productToPass = {
+                            id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            images: item.images,
+                            description: rawItem.description || '',
+                            details: rawItem.details || ''
+                        };
+                    }
+                    window.openProductDetail(productToPass);
+                }
+            });
             cartItem.appendChild(imageDiv);
             
             // Details container
@@ -72,6 +143,31 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const h4 = document.createElement('h4');
             h4.textContent = item.name;
+            h4.style.cursor = 'pointer';
+            h4.addEventListener('click', () => {
+                if (typeof window.openProductDetail === 'function') {
+                    // Try to get full product data from products array if available
+                    let productToPass = rawItem;
+                    if (typeof products !== 'undefined' && products.length > 0) {
+                        const fullProduct = products.find(p => p.id === item.id);
+                        if (fullProduct && fullProduct.description !== undefined) {
+                            productToPass = fullProduct;
+                        }
+                    }
+                    // If rawItem doesn't have description/details, use rawItem as is
+                    if (!productToPass.description && !productToPass.details) {
+                        productToPass = {
+                            id: item.id,
+                            name: item.name,
+                            price: item.price,
+                            images: item.images,
+                            description: rawItem.description || '',
+                            details: rawItem.details || ''
+                        };
+                    }
+                    window.openProductDetail(productToPass);
+                }
+            });
             detailsDiv.appendChild(h4);
             
             const priceP = document.createElement('p');
