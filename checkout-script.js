@@ -575,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
 商品清單 Items:
 ${itemsList}
 
-請在提交付款證明時包含以上信息。Please include the above information when submitting payment proof.`;
+`;
 
             // Function to show payment proof page (page 2)
         function showPaymentProofPage() {

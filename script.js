@@ -71,7 +71,7 @@ async function loadProductsFromGoogleSheets(forceRefresh = false) {
             const cells = row.c;
             if (!cells || cells.length < 3) return; // Skip empty rows
             
-            // Parse columns: A=ID, B=Name, C=Price, D=Image1, E=Image2, F=Image3, G=Description, H=Details, I=Category, J=Stock, K=Status
+            // Parse columns: A=ID, B=Name, C=Price, D=Image1, E=Image2, F=Image3, G=Description, H=Details, I=Size, J=Stock, K=Status
             const id = cells[0] && cells[0].v ? String(cells[0].v).trim() : '';
             const name = cells[1] && cells[1].v ? String(cells[1].v).trim() : '';
             const price = cells[2] && cells[2].v ? parseFloat(cells[2].v) : 0;
@@ -115,7 +115,7 @@ async function loadProductsFromGoogleSheets(forceRefresh = false) {
                 }
             }
             
-            const category = (cells[8] && (cells[8].v || cells[8].f)) ? String(cells[8].v || cells[8].f).trim() : '';
+            const size = (cells[8] && (cells[8].v || cells[8].f)) ? String(cells[8].v || cells[8].f).trim() : '';
             const stock = (cells[9] && cells[9].v) ? parseInt(cells[9].v) : 0;
             
             
@@ -152,7 +152,7 @@ async function loadProductsFromGoogleSheets(forceRefresh = false) {
                     images: images,
                     description: description,
                     details: details,
-                    category: category,
+                    size: size,
                     stock: stock,
                     status: status
                 };
@@ -247,7 +247,7 @@ function validateProduct(p) {
         images: Array.isArray(p.images) ? p.images.filter(img => typeof img === 'string') : (p.img ? [String(p.img)] : []),
         description: String(p.description || '').trim(),
         details: String(p.details || '').trim(),
-        category: String(p.category || '').trim(),
+        size: String(p.size || '').trim(),
         stock: parseInt(p.stock) || 0,
         status: String(p.status || 'active')
     };
@@ -362,11 +362,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProductsFromGoogleSheets();
     
     // Distribute products to different sections without duplicates
-    // NEW ARRIVALS: First 4 products
-    // ON SALE: Middle 4 products
+    // NEW ARRIVALS: Middle 4 products (swapped with ON SALE)
+    // ON SALE: First 4 products (swapped with NEW ARRIVALS)
     // TOP SELLING: Last 4 products
-    renderProducts('newArrivals', displayProducts.slice(0, 4));
-    renderProducts('onSale', displayProducts.slice(4, 8));
+    renderProducts('newArrivals', displayProducts.slice(4, 8));
+    renderProducts('onSale', displayProducts.slice(0, 4));
     renderProducts('topSelling', displayProducts.slice(8, 12));
 
     // Shopping cart
@@ -385,9 +385,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     name: btn.dataset.name, 
                     price: +btn.dataset.price, 
                     images: images,
-                    img: images[0] || '',
-                    selectedColor: images.length > 1 ? 'Color 1' : 'Default',
-                    selectedImage: images[0] || '',
                     qty: 1
                 });
             }

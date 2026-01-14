@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             price: parseFloat(item.price) || 0,
             qty: Math.max(1, parseInt(item.qty) || 1),
             images: Array.isArray(item.images) ? item.images.filter(img => typeof img === 'string') : (item.img ? [String(item.img)] : []),
+            size: String(item.size || ''),
             index: index
         };
     }
@@ -129,7 +130,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             price: item.price,
                             images: item.images,
                             description: rawItem.description || '',
-                            details: rawItem.details || ''
+                            details: rawItem.details || '',
+                            size: rawItem.size || ''
                         };
                     }
                     window.openProductDetail(productToPass);
@@ -162,7 +164,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                             price: item.price,
                             images: item.images,
                             description: rawItem.description || '',
-                            details: rawItem.details || ''
+                            details: rawItem.details || '',
+                            size: rawItem.size || ''
                         };
                     }
                     window.openProductDetail(productToPass);
@@ -174,40 +177,122 @@ document.addEventListener('DOMContentLoaded', async () => {
             priceP.textContent = `$${item.price.toFixed(2)}`;
             detailsDiv.appendChild(priceP);
             
-            // Color selector if multiple images
-            if (item.images.length > 1) {
-                const colorSelector = document.createElement('div');
-                colorSelector.className = 'color-selector';
+            // Display size if available with edit button
+            if (item.size && item.size.trim()) {
+                const sizeContainer = document.createElement('div');
+                sizeContainer.className = 'cart-item-size-container';
                 
-                const label = document.createElement('label');
-                label.textContent = 'Color:';
-                colorSelector.appendChild(label);
+                // Get product size options from products array
+                let productSizeOptions = '';
+                if (typeof products !== 'undefined' && products.length > 0) {
+                    const fullProduct = products.find(p => p.id === item.id);
+                    if (fullProduct && fullProduct.size && fullProduct.size.trim()) {
+                        productSizeOptions = fullProduct.size;
+                    }
+                }
+                // Fallback to rawItem size if product not found
+                if (!productSizeOptions && rawItem.size && rawItem.size.trim()) {
+                    productSizeOptions = rawItem.size;
+                }
                 
-                const colorOptions = document.createElement('div');
-                colorOptions.className = 'color-options';
+                // Size display (non-editing mode)
+                const sizeDisplay = document.createElement('div');
+                sizeDisplay.className = 'cart-item-size-display';
+                sizeDisplay.innerHTML = `
+                    <span class="lang-zh">尺寸: </span>
+                    <span class="lang-en">Size: </span>
+                    <strong>${window.escapeHtml ? window.escapeHtml(item.size) : item.size}</strong>
+                    <button class="cart-size-edit-btn" title="Edit size">
+                        <span class="lang-zh">編輯</span>
+                        <span class="lang-en">Edit</span>
+                    </button>
+                `;
                 
-                item.images.forEach((img, idx) => {
-                    const optionLabel = document.createElement('label');
-                    optionLabel.className = 'color-option';
-                    
-                    const radio = document.createElement('input');
-                    radio.type = 'radio';
-                    radio.name = `color-${item.id}-${index}`;
-                    radio.value = `Color ${idx + 1}`;
-                    radio.dataset.image = img;
-                    if (idx === 0) radio.checked = true;
-                    optionLabel.appendChild(radio);
-                    
-                    const span = document.createElement('span');
-                    span.className = 'color-label';
-                    span.textContent = `Color ${idx + 1}`;
-                    optionLabel.appendChild(span);
-                    
-                    colorOptions.appendChild(optionLabel);
+                // Size selector (editing mode) - hidden by default
+                const sizeSelector = document.createElement('div');
+                sizeSelector.className = 'cart-item-size-selector';
+                sizeSelector.style.display = 'none';
+                
+                if (productSizeOptions) {
+                    const sizeOptions = productSizeOptions.split(',').map(s => s.trim()).filter(s => s);
+                    sizeSelector.innerHTML = `
+                        <div class="cart-size-selector-options">
+                            ${sizeOptions.map(sizeOption => `
+                                <button class="cart-size-option ${sizeOption === item.size ? 'selected' : ''}" data-size="${window.escapeHtml ? window.escapeHtml(sizeOption) : sizeOption}">
+                                    ${window.escapeHtml ? window.escapeHtml(sizeOption) : sizeOption}
+                                </button>
+                            `).join('')}
+                        </div>
+                        <div class="cart-size-selector-actions">
+                            <button class="cart-size-save-btn">
+                                <span class="lang-zh">確認</span>
+                                <span class="lang-en">Confirm</span>
+                            </button>
+                            <button class="cart-size-cancel-btn">
+                                <span class="lang-zh">取消</span>
+                                <span class="lang-en">Cancel</span>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                sizeContainer.appendChild(sizeDisplay);
+                sizeContainer.appendChild(sizeSelector);
+                detailsDiv.appendChild(sizeContainer);
+                
+                // Edit button click handler
+                const editBtn = sizeDisplay.querySelector('.cart-size-edit-btn');
+                if (editBtn) {
+                    editBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        sizeDisplay.style.display = 'none';
+                        sizeSelector.style.display = 'block';
+                    });
+                }
+                
+                // Size option click handler
+                const sizeOptionBtns = sizeSelector.querySelectorAll('.cart-size-option');
+                let selectedSizeValue = item.size;
+                sizeOptionBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        sizeOptionBtns.forEach(b => b.classList.remove('selected'));
+                        btn.classList.add('selected');
+                        selectedSizeValue = btn.dataset.size;
+                    });
                 });
                 
-                colorSelector.appendChild(colorOptions);
-                detailsDiv.appendChild(colorSelector);
+                // Save button click handler
+                const saveBtn = sizeSelector.querySelector('.cart-size-save-btn');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Update cart item size
+                        if (cart[index] && cart[index].id === item.id) {
+                            cart[index].size = selectedSizeValue;
+                            localStorage.setItem('cart', JSON.stringify(cart));
+                            // Re-render cart to show updated size
+                            renderCart();
+                        }
+                    });
+                }
+                
+                // Cancel button click handler
+                const cancelBtn = sizeSelector.querySelector('.cart-size-cancel-btn');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        sizeDisplay.style.display = 'block';
+                        sizeSelector.style.display = 'none';
+                        // Reset selection to current size
+                        sizeOptionBtns.forEach(btn => {
+                            btn.classList.remove('selected');
+                            if (btn.dataset.size === item.size) {
+                                btn.classList.add('selected');
+                            }
+                        });
+                        selectedSizeValue = item.size;
+                    });
+                }
             }
             
             // Quantity controls
@@ -287,29 +372,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 cart.splice(index, 1);
                 localStorage.setItem('cart', JSON.stringify(cart));
                 renderCart();
-            };
-        });
-        // Color selector change handler
-        cartItemsDiv.querySelectorAll('input[type="radio"]').forEach(radio => {
-            radio.onchange = (e) => {
-                const cartItem = e.target.closest('.cart-item');
-                const id = cartItem.dataset.id;
-                const index = parseInt(cartItem.dataset.index);
-                const selectedImage = e.target.dataset.image;
-                const selectedColor = e.target.value;
-                
-                // Update cart item
-                if (cart[index] && cart[index].id == id) {
-                    cart[index].selectedColor = selectedColor;
-                    cart[index].selectedImage = selectedImage;
-                    localStorage.setItem('cart', JSON.stringify(cart));
-                    
-                    // Update displayed image
-                    const imageEl = cartItem.querySelector('.cart-item-image');
-                    if (imageEl) {
-                        imageEl.style.backgroundImage = `url('${selectedImage}')`;
-                    }
-                }
             };
         });
     }

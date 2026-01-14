@@ -311,7 +311,7 @@
             images: Array.isArray(product.images) ? product.images : (product.img ? [String(product.img)] : []),
             description: String(product.description || '').trim(),
             details: String(product.details || '').trim(),
-            category: String(product.category || '').trim(),
+            size: String(product.size || '').trim(),
             stock: parseInt(product.stock) || 0,
             status: String(product.status || 'active')
         };
@@ -367,7 +367,22 @@
                     <p class="product-detail-price">$${p.price.toFixed(2)} HKD</p>
                     ${p.description && p.description.trim() ? `<div class="product-detail-section"><h3 class="product-detail-section-title"><span class="lang-zh">簡介</span><span class="lang-en">Description</span></h3><div class="product-detail-description">${window.escapeHtml(p.description).replace(/\n/g, '<br>')}</div></div>` : ''}
                     ${p.details && p.details.trim() ? `<div class="product-detail-section"><h3 class="product-detail-section-title"><span class="lang-zh">詳情</span><span class="lang-en">Details</span></h3><div class="product-detail-details">${window.escapeHtml(p.details).replace(/\n/g, '<br>')}</div></div>` : ''}
-                    <button class="product-detail-add-cart" data-id="${p.id}" data-name="${window.escapeHtml(p.name)}" data-price="${p.price}" data-images='${JSON.stringify(images)}'>
+                    ${p.size && p.size.trim() ? `
+                        <div class="product-detail-section">
+                            <h3 class="product-detail-section-title">
+                                <span class="lang-zh">尺寸</span>
+                                <span class="lang-en">Size</span>
+                            </h3>
+                            <div class="product-detail-size-selector">
+                                ${p.size.split(',').map(s => s.trim()).filter(s => s).map((sizeOption, idx) => `
+                                    <button class="size-option ${idx === 0 ? 'selected' : ''}" data-size="${window.escapeHtml(sizeOption)}">
+                                        ${window.escapeHtml(sizeOption)}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    <button class="product-detail-add-cart" data-id="${p.id}" data-name="${window.escapeHtml(p.name)}" data-price="${p.price}" data-images='${JSON.stringify(images)}' ${p.size && p.size.trim() ? 'data-size=""' : ''}>
                         <span class="lang-zh">加入購物車</span>
                         <span class="lang-en">Add to Cart</span>
                     </button>
@@ -425,18 +440,55 @@
             });
         }
         
-        // Add to cart button
+        // Size selector events
+        const sizeOptions = body.querySelectorAll('.size-option');
         const addCartBtn = body.querySelector('.product-detail-add-cart');
+        let selectedSize = '';
+        
+        if (sizeOptions.length > 0) {
+            // Set initial selected size
+            const firstSelected = body.querySelector('.size-option.selected');
+            if (firstSelected) {
+                selectedSize = firstSelected.dataset.size || '';
+                if (addCartBtn) {
+                    addCartBtn.dataset.size = selectedSize;
+                }
+            }
+            
+            sizeOptions.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Remove selected class from all buttons
+                    sizeOptions.forEach(b => b.classList.remove('selected'));
+                    // Add selected class to clicked button
+                    btn.classList.add('selected');
+                    // Update selected size
+                    selectedSize = btn.dataset.size || '';
+                    // Update add to cart button data
+                    if (addCartBtn) {
+                        addCartBtn.dataset.size = selectedSize;
+                    }
+                });
+            });
+        }
+        
+        // Add to cart button
         if (addCartBtn) {
             addCartBtn.addEventListener('click', () => {
                 const id = addCartBtn.dataset.id;
                 const name = addCartBtn.dataset.name;
                 const price = parseFloat(addCartBtn.dataset.price);
                 const images = JSON.parse(addCartBtn.dataset.images || '[]');
+                const size = addCartBtn.dataset.size || '';
+                
+                // Check if size is required but not selected
+                if (p.size && p.size.trim() && !size) {
+                    alert('請選擇尺寸 / Please select a size');
+                    return;
+                }
                 
                 // Add to cart
                 const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                cart.push({ id, name, price, qty: 1, images });
+                cart.push({ id, name, price, qty: 1, images, size: size || '' });
                 localStorage.setItem('cart', JSON.stringify(cart));
                 
                 // Update cart count
